@@ -1,0 +1,6 @@
+README.md
+setup.py
+samfilt.egg-info/PKG-INFO
+samfilt.egg-info/SOURCES.txt
+samfilt.egg-info/dependency_links.txt
+samfilt.egg-info/top_level.txt
