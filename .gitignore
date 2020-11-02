@@ -9,7 +9,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
-samfilt.egg*
+samfilt.egg-info
 develop-eggs/
 dist/
 downloads/
@@ -24,6 +24,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.egg*
 MANIFEST
 
 # PyInstaller
