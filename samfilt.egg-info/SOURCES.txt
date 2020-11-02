@@ -1,5 +1,6 @@
 README.md
 setup.py
+samfilt/samfilt
 samfilt.egg-info/PKG-INFO
 samfilt.egg-info/SOURCES.txt
 samfilt.egg-info/dependency_links.txt

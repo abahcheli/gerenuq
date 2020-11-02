@@ -1,2 +1,0 @@
-The samfilt script requires Python version >=3.0 and the following Python packages: sys, getopt, re, time, math, concurrent.futures and concurrent.futures:ProcessPoolExecutor.
-
