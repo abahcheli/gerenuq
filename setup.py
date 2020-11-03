@@ -17,7 +17,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name = "samfilt", # Replace with your own username
-    version = "0.0.3",
+    version = "0.0.7",
     author = "Alec Bahcheli",
     author_email = "abahchel@uwo.ca",
     description = "Samfile filtering script.",

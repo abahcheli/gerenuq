@@ -1,6 +1,10 @@
 # SAMFILT
 A simple commandline tool for filtering long reads from samfiles according to various user-defined parameters.
 # Installation
+## Using Conda
+```bash
+  $ conda install -c abahcheli samfilt
+```
 ## Using Pip
 ```bash
   $ pip install samfilt
@@ -13,5 +17,5 @@ A simple commandline tool for filtering long reads from samfiles according to va
 ```
 # Usage
 ```bash
-$ python samfilt
+$ samfilt
 ```

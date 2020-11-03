@@ -18,7 +18,8 @@ mml = 0.5 <minimum ratio of length to score, may be considered as the fraction o
 ml = 1000 <minimum read length for cutoff (default 1000)>
 ms = 1 <minimum score for the whole alignment (default 1)>
 wpc = 1 <number of processes to run (default 1)>
-'''
+
+version 0.0.5'''
 
 # number of processes
 worker_process_count = 1

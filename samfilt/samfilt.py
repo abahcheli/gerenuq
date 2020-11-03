@@ -5,6 +5,9 @@
 import sys, getopt, re, time, math
 import concurrent.futures
 
+# version
+version = "version 0.0.5"
+
 t1 = time.time()
 
 # number of processes
@@ -24,7 +27,7 @@ min_score = 1
 
 # error code to return without necessary input
 error_code = '''
-samfilt.py
+sam-filt
 
 Required inputs:
 -i / --input <input raw samfile>
@@ -35,16 +38,18 @@ Optional inputs:
 -m / --matchlength <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
 -s / --score <minimum score for the whole alignment (default 1)>
 -q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 0.5)>
--t / --threads <number of processes to run (default 1)>'''
+-t / --threads <number of processes to run (default 1)>
+
+{vers}'''.format(vers=version)
 
 # get the options and files required for the input
 try:
-    opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:t:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads="])
+    opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:t:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads=", "version="])
 except getopt.GetoptError:
     print (error_code)
-    sys.exit(2)
+    sys.exit()
 for opt, arg in opts:
-    if opt == '-h':
+    if opt in ('-h', '--help'):
         print (error_code)
         sys.exit()
     elif opt in ("-i", "--input"):
@@ -61,6 +66,8 @@ for opt, arg in opts:
         min_len_to_score = float(arg)
     elif opt in ("-t", "--threads"):
         worker_process_count = int(arg)
+    elif opt in ("-v", "--version"):
+        print(version)
 
 def it_meets_filters(length, num_of_matches):
     if int(length) > min_length and (int(num_of_matches) / int(length)) > min_match_to_length:
