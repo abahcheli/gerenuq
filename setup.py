@@ -20,7 +20,7 @@ setup(
     version = "0.0.3",
     author = "Alec Bahcheli",
     author_email = "abahchel@uwo.ca",
-    description = "Sam file filtering script.",
+    description = "Samfile filtering script.",
     long_description = README,
     long_description_content_type="text/markdown",
     url="https://github.com/abahcheli/samfilt",

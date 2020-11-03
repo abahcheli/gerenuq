@@ -129,7 +129,6 @@ def main():
     # chunking the reads improves processing time by avoiding compilation congestion at the end
     if worker_process_count > 1:
         chunks = math.floor(0.2 * len(samfile) / worker_process_count)
-
     else:
         chunks = 1
 

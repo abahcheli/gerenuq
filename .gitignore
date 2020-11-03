@@ -25,6 +25,7 @@ wheels/
 .installed.cfg
 *.egg
 *.egg*
+conda/
 MANIFEST
 
 # PyInstaller
