@@ -1,5 +1,5 @@
 # SAMFILT
-A simple commandline app for searching and looking up opensource vulnerabilities
+A simple commandline tool for filtering long reads from samfiles according to various user-defined parameters.
 # Installation
 ## Using Pip
 ```bash
