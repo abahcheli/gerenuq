@@ -20,19 +20,21 @@ dependency_links = [x.strip().replace('git+', '') for x in all_reqs \
                     if 'git+' not in x]
 
 setup(
-    name="samfilt", # Replace with your own username
-    version="0.0.1",
-    author="Alec Bahcheli",
-    author_email="abahchel@uwo.ca",
-    description="Sam file filtering script.",
-    long_description=long_description,
+    name = "samfilt", # Replace with your own username
+    version = "0.0.0",
+    author = "Alec Bahcheli",
+    author_email = "abahchel@uwo.ca",
+    description = "Sam file filtering script.",
+    long_description = long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/abahcheli/samfilt",
-    packages=find_packages(),
+    packages = find_packages(),
     install_requires = install_requires,
-    python_requires='>=3.0',
-    scripts=['samfilt/samfilt'],
-    classifiers=[
+    python_requires = '>=3.0',
+    entry_points = {
+        'console_scripts': ['samfilt=samfilt.samfilt:main']
+    },
+    classifiers = [
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Academic Free License (AFL)",
         "Operating System :: OS Independent",

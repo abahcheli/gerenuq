@@ -1,7 +1,9 @@
+#! /usr/bin/env python
 # sam file filtering script
 # Alec Bahcheli, Daniel Giguire from Gloor Lab, Western University, Canada
 
 import sys, getopt, re, time, math
+from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 
 t1 = time.time()
@@ -9,11 +11,11 @@ t1 = time.time()
 # number of processes
 worker_process_count = 1
 
-# maximum ratio of length to score
-max_len_to_score = 2
+# minimum ratio of length to score
+min_len_to_score = 0.5
 
 # minimum ratio of the number of matches to the length
-min_match_to_length = 1
+min_match_to_length = 0.5
 
 # minimum length for a read to be considered
 min_length = 1000
@@ -23,17 +25,17 @@ min_score = 1
 
 # error code to return without necessary input
 error_code = '''
-cigar-parse_phased.py
+samfilt.py
 
 Required inputs:
 -i / --input <input raw samfile>
- -o / --output <output filtered samfile>
+-o / --output <output filtered samfile>
 
 Optional inputs:
 -l / --length <minimum read length for cutoff (default 1000)>
 -m / --matchlength <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
 -s / --score <minimum score for the whole alignment (default 1)>
--q / --lengthscore <maximum ratio of length to score, may be considered as the inverse of the average score per base (default 2)>
+-q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 0.5)>
 -t / --threads <number of processes to run (default 1)>'''
 
 # get the options and files required for the input
@@ -57,17 +59,9 @@ for opt, arg in opts:
     elif opt in ("-s", "--score"):
         min_score = int(arg)
     elif opt in ("-q", "--lengthscore"):
-        max_len_to_score = float(arg)
+        min_len_to_score = float(arg)
     elif opt in ("-t", "--threads"):
         worker_process_count = int(arg)
-
-# dictionary for vcf of phase
-option = {}
-
-# list of reads that satisfy the cutoff requirements
-reads_of_interest = []
-
-future_list = []
 
 def it_meets_filters(length, num_of_matches):
     if int(length) > min_length and (int(num_of_matches) / int(length)) > min_match_to_length:
@@ -76,7 +70,7 @@ def it_meets_filters(length, num_of_matches):
         return False
 
 def it_is_good_score(length, score):
-    if int(score) > min_score and (int(length) / int(score)) < max_len_to_score:
+    if int(score) > min_score and (int(length) / int(score)) < min_len_to_score:
         return True
     else:
         return False
@@ -115,7 +109,7 @@ def main():
         return print(error_code)
     
     # open the samfile
-    samfile_raw = open(sam).readlines()
+    samfile_raw = open(sam)
 
     # open the results file
     results = open(results_file, "w")
@@ -133,10 +127,18 @@ def main():
     print("Samfile read into memory for parallelization")
     print(time.time() - t1)
 
-    chunks = math.floor(0.2 * len(samfile) / worker_process_count)
+    # chunking the reads improves processing time by avoiding compilation congestion at the end
+    if worker_process_count > 1:
+        chunks = math.floor(0.2 * len(samfile) / worker_process_count)
+
+    else:
+        chunks = 1
+
+    # list of reads that satisfy the cutoff requirements
+    reads_of_interest = []
 
     # parallelize read evaluations
-    with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
+    with ProcessPoolExecutor(max_workers = worker_process_count) as executor:
         for reads in executor.map(filter_reads, samfile, chunksize = chunks):
             if reads != None:
                 reads_of_interest.append(reads)
@@ -153,10 +155,6 @@ def main():
     print("Finished writing filtered samfile")
     print(time.time() - t1)
 
-
-
 if __name__ == '__main__':
     main()
-
-
 
