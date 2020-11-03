@@ -3,7 +3,6 @@
 # Alec Bahcheli, Daniel Giguire from Gloor Lab, Western University, Canada
 
 import sys, getopt, re, time, math
-from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 
 t1 = time.time()
@@ -138,7 +137,7 @@ def main():
     reads_of_interest = []
 
     # parallelize read evaluations
-    with ProcessPoolExecutor(max_workers = worker_process_count) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
         for reads in executor.map(filter_reads, samfile, chunksize = chunks):
             if reads != None:
                 reads_of_interest.append(reads)
