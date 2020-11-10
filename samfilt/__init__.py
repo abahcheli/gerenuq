@@ -13,19 +13,19 @@ sam = "NULL" <input raw samfile>
 results_file = "NULL" <output filtered samfile>
 
 Optional inputs:
-mls = 0.5 <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
+mls = 2 <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
 mml = 0.5 <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 0.5)>
 ml = 1000 <minimum read length for cutoff (default 1000)>
 ms = 1 <minimum score for the whole alignment (default 1)>
 wpc = 1 <number of processes to run (default 1)>
 
-version 0.0.5'''
+version 0.0.11'''
 
 # number of processes
 worker_process_count = 1
 
 # minimum ratio of length to score
-min_len_to_score = 0.5
+min_len_to_score = 2
 
 # minimum ratio of the number of matches to the length
 min_match_to_length = 0.5
@@ -74,7 +74,7 @@ def filter_reads(read):
                 return "\t".join(read)
 
 
-def filter_sam_file(sam = "NULL", results_file = "NULL", mls = 0.5, mml = 0.5, ml = 1000, ms = 1, wpc = 1):
+def main(sam = "NULL", results_file = "NULL", mls = 0.5, mml = 0.5, ml = 1000, ms = 1, wpc = 1):
     t1 = time.time()
     
     # number of processes

@@ -17,10 +17,10 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name = "samfilt", # Replace with your own username
-    version = "0.0.7",
+    version = "0.0.11",
     author = "Alec Bahcheli",
     author_email = "abahchel@uwo.ca",
-    description = "Samfile filtering script.",
+    description = "Samfile long-read filtering script.",
     long_description = README,
     long_description_content_type="text/markdown",
     url="https://github.com/abahcheli/samfilt",
@@ -28,7 +28,7 @@ setup(
     # install_requires = install_requires,
     python_requires = '>=3.0',
     entry_points = {
-        'console_scripts': ['samfilt=samfilt.samfilt:main']
+        'console_scripts': ['samfilt=samfilt.samfilt_cl:main']
     },
     classifiers = [
         "Programming Language :: Python :: 3",

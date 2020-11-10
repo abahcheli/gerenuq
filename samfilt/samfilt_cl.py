@@ -6,7 +6,7 @@ import sys, getopt, re, time, math
 import concurrent.futures
 
 # version
-version = "version 0.0.5"
+version = "version 0.0.11"
 
 t1 = time.time()
 
@@ -14,7 +14,7 @@ t1 = time.time()
 worker_process_count = 1
 
 # minimum ratio of length to score
-min_len_to_score = 0.5
+min_len_to_score = 2
 
 # minimum ratio of the number of matches to the length
 min_match_to_length = 0.5
@@ -27,7 +27,7 @@ min_score = 1
 
 # error code to return without necessary input
 error_code = '''
-sam-filt
+samfilt
 
 Required inputs:
 -i / --input <input raw samfile>
@@ -37,7 +37,7 @@ Optional inputs:
 -l / --length <minimum read length for cutoff (default 1000)>
 -m / --matchlength <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
 -s / --score <minimum score for the whole alignment (default 1)>
--q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 0.5)>
+-q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 2)>
 -t / --threads <number of processes to run (default 1)>
 
 {vers}'''.format(vers=version)
