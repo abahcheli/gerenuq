@@ -16,19 +16,19 @@ README = (HERE / "README.md").read_text()
 #                     if 'git+' not in x]
 
 setup(
-    name = "samfilt", # Replace with your own username
-    version = "0.0.11",
+    name = "gerenuq", # Replace with your own username
+    version = "0.0.1",
     author = "Alec Bahcheli",
     author_email = "abahchel@uwo.ca",
     description = "Samfile long-read filtering script.",
     long_description = README,
     long_description_content_type="text/markdown",
-    url="https://github.com/abahcheli/samfilt",
+    url="https://github.com/abahcheli/gerenuq",
     packages = find_packages(),
     # install_requires = install_requires,
     python_requires = '>=3.0',
     entry_points = {
-        'console_scripts': ['samfilt=samfilt.samfilt_cl:main']
+        'console_scripts': ['gerenuq=gerenuq.gerenuq_cl:main']
     },
     classifiers = [
         "Programming Language :: Python :: 3",

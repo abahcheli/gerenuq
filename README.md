@@ -1,21 +1,21 @@
-# SAMFILT
+# GERENUQ
 A simple commandline tool for filtering long reads from samfiles according to various user-defined parameters.
 # Installation
 ## Using Conda
 ```bash
-  $ conda install -c abahcheli samfilt
+  $ conda install -c abahcheli gerenuq
 ```
 ## Using Pip
 ```bash
-  $ pip install samfilt
+  $ pip install gerenuq
 ```
 ## Manual
 ```bash
-  $ git clone https://github.com/abahcheli/samfilt
-  $ cd samfilt
+  $ git clone https://github.com/abahcheli/gerenuq
+  $ cd gerenuq
   $ python setup.py install
 ```
 # Usage
 ```bash
-$ samfilt
+$ gerenuq
 ```

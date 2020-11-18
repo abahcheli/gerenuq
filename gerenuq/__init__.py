@@ -1,14 +1,25 @@
-#! /usr/bin/env python
 # sam file filtering script
 # Alec Bahcheli, Daniel Giguire from Gloor Lab, Western University, Canada
 
 import sys, getopt, re, time, math
 import concurrent.futures
 
-# version
-version = "version 0.0.11"
+# error code to return without necessary input
+error_code = '''
+gerenuq.py
 
-t1 = time.time()
+Required inputs:
+sam = "NULL" <input raw samfile>
+results_file = "NULL" <output filtered samfile>
+
+Optional inputs:
+mls = 2 <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
+mml = 0.5 <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 0.5)>
+ml = 1000 <minimum read length for cutoff (default 1000)>
+ms = 1 <minimum score for the whole alignment (default 1)>
+wpc = 1 <number of processes to run (default 1)>
+
+version 0.0.1'''
 
 # number of processes
 worker_process_count = 1
@@ -24,50 +35,6 @@ min_length = 1000
 
 # minimum score for an alignment to be considered
 min_score = 1
-
-# error code to return without necessary input
-error_code = '''
-samfilt
-
-Required inputs:
--i / --input <input raw samfile>
--o / --output <output filtered samfile>
-
-Optional inputs:
--l / --length <minimum read length for cutoff (default 1000)>
--m / --matchlength <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
--s / --score <minimum score for the whole alignment (default 1)>
--q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 2)>
--t / --threads <number of processes to run (default 1)>
-
-{vers}'''.format(vers=version)
-
-# get the options and files required for the input
-try:
-    opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:t:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads=", "version="])
-except getopt.GetoptError:
-    print (error_code)
-    sys.exit()
-for opt, arg in opts:
-    if opt in ('-h', '--help'):
-        print (error_code)
-        sys.exit()
-    elif opt in ("-i", "--input"):
-        sam = str(arg)
-    elif opt in ("-o", "--output"):
-        results_file = str(arg)
-    elif opt in ("-l", "--length"):
-        min_length = int(arg)
-    elif opt in ("-m", "--matchlength"):
-        min_match_to_length = float(arg)
-    elif opt in ("-s", "--score"):
-        min_score = int(arg)
-    elif opt in ("-q", "--lengthscore"):
-        min_len_to_score = float(arg)
-    elif opt in ("-t", "--threads"):
-        worker_process_count = int(arg)
-    elif opt in ("-v", "--version"):
-        print(version)
 
 def it_meets_filters(length, num_of_matches):
     if int(length) > min_length and (int(num_of_matches) / int(length)) > min_match_to_length:
@@ -106,12 +73,29 @@ def filter_reads(read):
             if it_meets_filters(length, num_of_matches):
                 return "\t".join(read)
 
-def main():
+
+def main(sam = "NULL", results_file = "NULL", mls = 0.5, mml = 0.5, ml = 1000, ms = 1, wpc = 1):
+    t1 = time.time()
+    
+    # number of processes
+    worker_process_count = wpc
+
+    # minimum ratio of length to score
+    min_len_to_score = mls
+
+    # minimum ratio of the number of matches to the length
+    min_match_to_length = mml
+
+    # minimum length for a read to be considered
+    min_length = ml
+
+    # minimum score for an alignment to be considered
+    min_score = ms
+
+    print(error_code)
+
     # test if the minimmum input parameters are defined
-    try:
-        sam
-        results_file
-    except NameError:
+    if sam == "NULL" or results_file == "NULL":
         return print(error_code)
     
     # open the samfile
@@ -159,7 +143,3 @@ def main():
 
     print("Finished writing filtered samfile")
     print(time.time() - t1)
-
-if __name__ == '__main__':
-    main()
-
