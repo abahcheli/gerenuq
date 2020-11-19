@@ -17,7 +17,7 @@ A simple commandline tool for filtering long reads from samfiles according to va
 ```
 # Usage
 ```bash
-gerenq
+gerenuq
 
 $ Required inputs:
 -i / --input <input raw samfile>
