@@ -17,5 +17,16 @@ A simple commandline tool for filtering long reads from samfiles according to va
 ```
 # Usage
 ```bash
-$ gerenuq
+gerenq
+
+$ Required inputs:
+-i / --input <input raw samfile>
+-o / --output <output filtered samfile>
+
+Optional inputs:
+-l / --length <minimum read length for cutoff (default 1000)>
+-m / --matchlength <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
+-s / --score <minimum score for the whole alignment (default 1)>
+-q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 2)>
+-t / --threads <number of processes to run (default 1)>
 ```
