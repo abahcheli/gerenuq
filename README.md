@@ -1,4 +1,7 @@
 # GERENUQ
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4281015.svg)](https://doi.org/10.5281/zenodo.4281015)
+
 A simple commandline tool for filtering long reads from samfiles according to various user-defined parameters.
 # Installation
 ## Using Conda
