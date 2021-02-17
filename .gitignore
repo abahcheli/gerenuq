@@ -7,11 +7,14 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+Dockerfile
+.dockerignore
 .Python
 build/
 samfilt.egg-info
 develop-eggs/
 dist/
+docker/
 downloads/
 eggs/
 .eggs/

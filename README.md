@@ -12,6 +12,11 @@ A simple commandline tool for filtering long reads from samfiles according to va
 ```bash
   $ pip install gerenuq
 ```
+
+## Using Docker
+```bash
+  $ docker pull abahcheli/gerenuq
+```
 ## Manual
 ```bash
   $ git clone https://github.com/abahcheli/gerenuq

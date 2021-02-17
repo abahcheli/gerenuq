@@ -16,7 +16,7 @@ README = (HERE / "README.md").read_text()
 #                     if 'git+' not in x]
 
 setup(
-    name = "gerenuq", # Replace with your own username
+    name = "gerenuq",
     version = "0.0.1",
     author = "Alec Bahcheli",
     author_email = "abahchel@uwo.ca",
@@ -36,3 +36,4 @@ setup(
         "Operating System :: OS Independent",
     ]
 )
+

@@ -2,7 +2,7 @@
 # sam file filtering script
 # Alec Bahcheli, Daniel Giguire from Gloor Lab, Western University, Canada
 
-import sys, getopt, re, time, math
+import sys, getopt, re, time, math, os
 import concurrent.futures
 
 def it_meets_filters(length, num_of_matches):
@@ -48,8 +48,9 @@ def main():
         sam
         results_file
     except NameError:
-        return print(error_code)
-    
+        print(error_code)
+        return False
+
     # open the samfile
     samfile_raw = open(sam)
 
@@ -95,6 +96,7 @@ def main():
 
     print("Finished writing filtered samfile")
     print(time.time() - t1)
+    return True
 
 if __name__ == '__main__':
     # version
@@ -136,17 +138,18 @@ if __name__ == '__main__':
 
     # get the options and files required for the input
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"i:o:l:m:s:q:t:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads=", "version="])
+        opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:t:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads=", "version="])
     except getopt.GetoptError:
         print (error_code)
-        sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             print (error_code)
             sys.exit()
         elif opt in ("-i", "--input"):
+            print(arg)
             sam = str(arg)
         elif opt in ("-o", "--output"):
+            print(arg)
             results_file = str(arg)
         elif opt in ("-l", "--length"):
             min_length = int(arg)
@@ -160,6 +163,30 @@ if __name__ == '__main__':
             worker_process_count = int(arg)
         elif opt in ("-v", "--version"):
             print(version)
-        
-    main()
+
+    restart_message = '''
+    Gerenuq command executed. 
+    To run another gerenuq command, input the following parameters as desired:
+
+    Required inputs:
+    -i / --input <input raw samfile>
+    -o / --output <output filtered samfile>
+
+    Optional inputs:
+    -l / --length <minimum read length for cutoff (default 1000)>
+    -m / --matchlength <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
+    -s / --score <minimum score for the whole alignment (default 1)>
+    -q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 2)>
+    -t / --threads <number of processes to run (default 1)>
+    '''
+
+    # if the script did not execute with the defined inputs, print error message, otherwise print restart message and await inputs
+    return_message = main()
+    if return_message: 
+        print(restart_message)
+
+    # give the option to restart the script as required
+    arguments = list(map(lambda x: ("-" + str(x)), input('Arguments:... ').split("-")))
+    print(arguments)
+    os.execv(sys.argv[0], arguments)
 
