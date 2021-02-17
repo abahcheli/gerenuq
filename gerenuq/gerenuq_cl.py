@@ -4,6 +4,7 @@
 
 import sys, getopt, re, time, math
 import concurrent.futures
+import pandas as pd
 
 # version
 version = "version 0.0.1"
@@ -25,13 +26,16 @@ min_length = 1000
 # minimum score for an alignment to be considered
 min_score = 1
 
+# paf mode = False by default
+paf = False
+
 # error code to return without necessary input
 error_code = '''
 gerenuq
 
 Required inputs:
--i / --input <input raw samfile>
--o / --output <output filtered samfile>
+-i / --input <input unfiltered file>
+-o / --output <output filtered file>
 
 Optional inputs:
 -l / --length <minimum read length for cutoff (default 1000)>
@@ -39,12 +43,13 @@ Optional inputs:
 -s / --score <minimum score for the whole alignment (default 1)>
 -q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 2)>
 -t / --threads <number of processes to run (default 1)>
+-p / --paf <file is in .paf format (minimap2 output) (default False)>
 
 {vers}'''.format(vers=version)
 
 # get the options and files required for the input
 try:
-    opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:t:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads=", "version="])
+    opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:t:p:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads=","paf=" "version="])
 except getopt.GetoptError:
     print (error_code)
     sys.exit()
@@ -53,7 +58,7 @@ for opt, arg in opts:
         print (error_code)
         sys.exit()
     elif opt in ("-i", "--input"):
-        sam = str(arg)
+        input = str(arg)
     elif opt in ("-o", "--output"):
         results_file = str(arg)
     elif opt in ("-l", "--length"):
@@ -64,6 +69,8 @@ for opt, arg in opts:
         min_score = int(arg)
     elif opt in ("-q", "--lengthscore"):
         min_len_to_score = float(arg)
+    elif opt in ("-p", "--paf"):
+        paf = str(arg)
     elif opt in ("-t", "--threads"):
         worker_process_count = int(arg)
     elif opt in ("-v", "--version"):
@@ -81,9 +88,10 @@ def it_is_good_score(length, score):
     else:
         return False
 
-def filter_reads(read):
+def filter_samfile(read):
     # split the read into the expected fields
     read = read.split("\t")
+
     if int(read[1]) == 16 or int(read[1]) == 0:
         # read mapping score
         score = int(read[13][5:])
@@ -105,60 +113,69 @@ def filter_reads(read):
         if it_is_good_score(length, score):
             if it_meets_filters(length, num_of_matches):
                 return "\t".join(read)
-
+                
 def main():
-    # test if the minimmum input parameters are defined
+    # test if the minimum input parameters are defined
     try:
-        sam
+        input
         results_file
     except NameError:
         return print(error_code)
     
-    # open the samfile
-    samfile_raw = open(sam)
+    if paf == True: 
+        df=pd.read_csv(paf, sep="\t", header=None, engine='python')
+        
+        # filter reads by query cutoff 
+        filtered_reads = df[ (df[3]-df[2] ) / df[1] > min_match_to_length]
+        
+        # output file
+        filtered_reads.to_csv(results_file, sep = "\t", index=False, header=False)
+    elif paf == False:
+        
+        # open the samfile
+        input_raw = open(input)
+        
+        # open the results file
+        results = open(results_file, "w")
+        
+        # make a list of just reads
+        samfile = []
+        # get the headers
+        for read in input_raw:
+            if read.startswith("@"):
+                results.write(read)
+            else:
+                samfile.append(read) 
 
-    # open the results file
-    results = open(results_file, "w")
+        print("File read into memory for parallelization")
+        print(time.time() - t1)
 
-    # make a list of just reads
-    samfile = []
-
-    # get the headers
-    for read in samfile_raw:
-        if read.startswith("@"):
-            results.write(read)
+        # chunking the reads improves processing time by avoiding compilation congestion at the end
+        if worker_process_count > 1:
+            chunks = math.floor(0.2 * len(samfile) / worker_process_count)
         else:
-            samfile.append(read)
+            chunks = 1
 
-    print("Samfile read into memory for parallelization")
-    print(time.time() - t1)
+        # list of reads that satisfy the cutoff requirements
+        reads_of_interest = []
 
-    # chunking the reads improves processing time by avoiding compilation congestion at the end
-    if worker_process_count > 1:
-        chunks = math.floor(0.2 * len(samfile) / worker_process_count)
-    else:
-        chunks = 1
+        # parallelize read evaluations
+        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
+            for reads in executor.map(filter_samfile, samfile, chunksize = chunks):
+                if reads != None:
+                    reads_of_interest.append(reads)
 
-    # list of reads that satisfy the cutoff requirements
-    reads_of_interest = []
+        print("Done filtering reads")
+        print(time.time() - t1)
 
-    # parallelize read evaluations
-    with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
-        for reads in executor.map(filter_reads, samfile, chunksize = chunks):
-            if reads != None:
-                reads_of_interest.append(reads)
+        for read in reads_of_interest:
+            # write the good reads to a file
+            results.write(read)
+        
+        results.close()
 
-    print("Done filtering reads")
-    print(time.time() - t1)
-
-    for read in reads_of_interest:
-        # write the good reads to a file
-        results.write(read)
-    
-    results.close()
-
-    print("Finished writing filtered samfile")
-    print(time.time() - t1)
+        print("Finished writing filtered samfile")
+        print(time.time() - t1)
 
 if __name__ == '__main__':
     main()
