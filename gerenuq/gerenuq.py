@@ -1,27 +1,10 @@
-#! /usr/bin/env python
 # Alec Bahcheli, Daniel Giguire from Gloor Lab, Western University, Canada
 
 import sys, getopt, re, time, math, pysam
 import concurrent.futures
 import pandas as pd
 
-# number of processes
-worker_process_count = 1
-
-# minimum ratio of length to score
-min_len_to_score = 2
-
-# minimum ratio of the number of matches to the length
-min_match_to_length = 0.5
-
-# minimum length for a read to be considered
-min_length = 1000
-
-# minimum score for an alignment to be considered
-min_score = 1
-
-# def filter_bamfile(read, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5):
-def filter_bamfile(read):
+def filter_bamfile(read, min_score, min_len_to_score, min_length, min_match_to_length):
     # split the read into the expected fields
     bitflag = read[1]
     cigar_string = read[2]
@@ -51,7 +34,7 @@ def filter_bamfile(read):
                 # return read name and cigar string
                 return (read[0], read[2])
 
-def filter_samfile(read):
+def filter_samfile(read, min_score, min_len_to_score, min_length, min_match_to_length):
     # split the read into the expected fields
     read = read.split("\t")
     bitflag = read[1]
@@ -81,16 +64,26 @@ def filter_samfile(read):
                 
                 return ("\t".join(read))
 
-def main():
-    # test if the minimum input parameters are defined
-    try:
-        input
-        results_file
-    except NameError:
-        return print(error_code)
-    
+def gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5):
+    '''
+    gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5)
+
+    Filters minimap2-mapped reads by mapping score, length, match-to-length and length-to-score ratios. Paf format files only filter by query cutoff.
+
+    Requires input_file in bam, sam or paf format and output_file (output in the same format as input).
+
+    version 0.0.2
+    '''
+    t1 = time.time()
+    # default format is sam
+    file_format = 'sam'
+    if re.search(r'\.[pP][aA][fF]', input):
+        file_format = 'paf'
+    elif re.search(r'\.[bB][aA][mM]', input):
+        file_format = 'bam'
+    # run process
     if file_format == 'paf': 
-        df=pd.read_csv(input, sep="\t", header=None)
+        df=pd.read_csv(input_file, sep="\t", header=None)
         
         print("File read into memory for parallelization")
         print(round(time.time() - t1, 2))
@@ -100,7 +93,7 @@ def main():
         print("Done filtering reads")
         print(round(time.time() - t1, 2))
         # output file
-        filtered_reads.to_csv(results_file, sep = "\t", index=False, header=False)
+        filtered_reads.to_csv(output_file, sep = "\t", index=False, header=False)
 
         print("Finished writing filtered paf file")
         print(round(time.time() - t1, 2))
@@ -108,7 +101,7 @@ def main():
     elif file_format == 'bam':
         # make a list of just reads
         samfile = []
-        infile = pysam.AlignmentFile(input, 'rb', threads=worker_process_count)
+        infile = pysam.AlignmentFile(input_file, 'rb')
         for read in infile:
             # add in order: read name, alignment type (index 1), CIGAR string, and alignment score (final index after 'AS:i:') in that order
             read = str(read).split("\t")
@@ -116,21 +109,15 @@ def main():
     
         print("File read into memory for parallelization")
         print(round(time.time() - t1, 2))
-        # chunking the reads improves processing time by avoiding compilation congestion at the end
-        if worker_process_count > 1:
-            chunks = math.floor(0.2 * len(samfile) / worker_process_count)
-        else:
-            chunks = 1
-        # parallelize read evaluations
-        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
-            # list of reads that satisfy the cutoff requirements
-            reads_of_interest = dict(list(filter(None, executor.map(filter_bamfile, samfile, chunksize = chunks))))
-                    
+        # filter reads
+        reads_of_interest = dict(list(filter(None, map(lambda x: filter_bamfile(x, min_score=min_score, min_len_to_score=min_len_to_score, min_length=min_length, min_match_to_length=min_match_to_length), samfile))))
+
         print("Done filtering reads")
         print(round(time.time() - t1, 2))
+        print(len(reads_of_interest.keys()))
         # compare to bam file by read name (dictionary key) and CIGAR score (dictionary value)
-        infile = pysam.AlignmentFile(input, 'rb', threads=worker_process_count)
-        bam_output = pysam.AlignmentFile(results_file, "wb", template=infile)
+        infile = pysam.AlignmentFile(input_file, 'rb')
+        bam_output = pysam.AlignmentFile(output_file, "wb", template=infile)
         for read in infile:
             if read.query_name in reads_of_interest:
                 if read.cigarstring == reads_of_interest.get(read.query_name):
@@ -141,11 +128,11 @@ def main():
 
     else:
         # open the results file
-        results = open(results_file, "w")
+        results = open(output_file, "w")
         # make a list of just reads
         samfile = []
-        # get the headers
-        with open(input) as input_raw:
+        with open(input_file) as input_raw:
+            # get the headers
             for read in input_raw:
                 if read.startswith("@"):
                     results.write(read)
@@ -154,15 +141,8 @@ def main():
 
         print("File read into memory for parallelization")
         print(round(time.time() - t1, 2))
-        # chunking the reads improves processing time by avoiding compilation congestion at the end
-        if worker_process_count > 1:
-            chunks = math.floor(0.2 * len(samfile) / worker_process_count)
-        else:
-            chunks = 1
-        # parallelize read evaluations
-        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
-            # list of reads that satisfy the cutoff requirements
-            reads_of_interest = list(filter(None, (executor.map(filter_samfile, samfile, chunksize = chunks))))
+        # evaluate reads
+        reads_of_interest = list(filter(None, map(lambda x: filter_bamfile(x, min_score=min_score, min_len_to_score=min_len_to_score, min_length=min_length, min_match_to_length=min_match_to_length), samfile)))
         
         print("Done filtering reads")
         print(round(time.time() - t1, 2))
@@ -173,64 +153,39 @@ def main():
 
         print("Finished writing filtered sam file")
         print(round(time.time() - t1, 2))
+        print("done")
 
-if __name__ == '__main__':
-    # version
-    version = "version 0.0.2"
+def gerenuq_filter_read_list(read_list, format='sam', min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5):
+    '''
+    gerenuq_filter_read_list(read_list, format='sam', min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5)
 
-    t1 = time.time()
-
-    # paf mode = False by default
-    file_format = 'sam'
-
-    # error code to return without necessary input
-    error_code = '''
-    gerenuq
     Filters minimap2-mapped reads by mapping score, length, match-to-length and length-to-score ratios. Paf format files only filter by query cutoff.
 
-    Required inputs:
-    -i / --input <input unfiltered sam, bam or paf file (auto-detected by file name)>
-    -o / --output <output filtered sam, bam or paf file (auto-detected by file name)>
+    Requires read_list as list of mapped read lines from sam or paf file (in tsv format). Returns a list of reads in sam or paf (tsv) format that passed filtering parameters. Headers will be ignored and not returned.
 
-    Optional inputs:
-    -l / --length <minimum read length for cutoff (default 1000)>
-    -m / --matchlength <sequence identity, also known as minimum ratio of matches to read length (default 0.5)>
-    -s / --score <minimum score for the whole alignment (default 1)>
-    -q / --lengthscore <minimum ratio of length to score, may be considered as the fraction of bases that have a positive score (default 2)>
-    -t / --threads <number of processes to run (default 1)>
+    version 0.0.2
+    '''
+    # run process
+    if format == 'paf': 
+        read_list = list(filter(lambda x: not x.startswith("@"), read_list))
+        # filter out headers
+        df=pd.DataFrame(read_list)
+        # filter reads by query cutoff 
+        filtered_reads = df[ (df[3]-df[2] ) / df[1] > min_match_to_length]
+        # return results
+        return_list = []
+        total_list = 0
+        for i, row in filtered_reads.iterrows():
+            total_list += 1
+            return_list.append("\t".join(row.tolist()))
+        return(return_list)
+    else:
+        # make a list of just reads, no headers
+        read_list = list(filter(lambda x: not x.startswith("@"), read_list))
+        # evaluate reads
+        reads_of_interest = list(filter(None, map(lambda x: filter_bamfile(x, min_score=min_score, min_len_to_score=min_len_to_score, min_length=min_length, min_match_to_length=min_match_to_length), read_list)))
+        # return results
+        return(reads_of_interest)
 
-    {vers}'''.format(vers=version)
 
-    # get the options and files required for the input
-    try:
-        opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:t:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads=", "version="])
-    except getopt.GetoptError:
-        print (error_code)
-        sys.exit()
-    for opt, arg in opts:
-        if opt in ('-h', '--help'):
-            print (error_code)
-            sys.exit()
-        elif opt in ("-i", "--input"):
-            input = str(arg)
-            if re.search(r'\.[pP][aA][fF]', input):
-                file_format = 'paf'
-            elif re.search(r'\.[bB][aA][mM]', input):
-                file_format = 'bam'
-        elif opt in ("-o", "--output"):
-            results_file = str(arg)
-        elif opt in ("-l", "--length"):
-            min_length = int(arg)
-        elif opt in ("-m", "--matchlength"):
-            min_match_to_length = float(arg)
-        elif opt in ("-s", "--score"):
-            min_score = int(arg)
-        elif opt in ("-q", "--lengthscore"):
-            min_len_to_score = float(arg)
-        elif opt in ("-t", "--threads"):
-            worker_process_count = int(arg)
-        elif opt in ("-v", "--version"):
-            print(version)
-        
-    main()
 
