@@ -12,8 +12,8 @@
             "console": "internalConsole",
             "cwd": "/Users/owner/Desktop/",
             "args": [
-                "--input", "testing.bam",
-                "--output", "tmp.bam"
+                "--input", "testing.sam",
+                "--output", "tmp.sam"
             ]
             // "args": [
             //     "--input", "testing.bam",

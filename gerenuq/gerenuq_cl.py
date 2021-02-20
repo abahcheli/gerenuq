@@ -22,7 +22,9 @@ min_score = 1
 
 # def filter_bamfile(read, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5):
 def filter_bamfile(read):
+    # (read[0], read[1], read[5], ((read[-1].split("), ("))[2]).split(", ")[1]))
     # split the read into the expected fields
+    # read = read.split("\t")
     bitflag = read[1]
     cigar_string = read[2]
     alignment_score = read[3]
@@ -82,101 +84,8 @@ def filter_samfile(read):
                 return ("\t".join(read))
 
 def main():
-    # test if the minimum input parameters are defined
-    try:
-        input
-        results_file
-    except NameError:
-        return print(error_code)
-    
-    if file_format == 'paf': 
-        df=pd.read_csv(input, sep="\t", header=None)
-        
-        print("File read into memory for parallelization")
-        print(round(time.time() - t1, 2))
-        # filter reads by query cutoff 
-        filtered_reads = df[ (df[3]-df[2] ) / df[1] > min_match_to_length]
-        
-        print("Done filtering reads")
-        print(round(time.time() - t1, 2))
-        # output file
-        filtered_reads.to_csv(results_file, sep = "\t", index=False, header=False)
-
-        print("Finished writing filtered paf file")
-        print(round(time.time() - t1, 2))
-
-    elif file_format == 'bam':
-        # make a list of just reads
-        samfile = []
-        infile = pysam.AlignmentFile(input, 'rb', threads=worker_process_count)
-        for read in infile:
-            # add in order: read name, alignment type (index 1), CIGAR string, and alignment score (final index after 'AS:i:') in that order
-            read = str(read).split("\t")
-            samfile.append(list((read[0], read[1], read[5], ((read[-1].split("), ("))[2]).split(", ")[1])))
-    
-        print("File read into memory for parallelization")
-        print(round(time.time() - t1, 2))
-        # chunking the reads improves processing time by avoiding compilation congestion at the end
-        if worker_process_count > 1:
-            chunks = math.floor(0.2 * len(samfile) / worker_process_count)
-        else:
-            chunks = 1
-        # parallelize read evaluations
-        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
-            # list of reads that satisfy the cutoff requirements
-            reads_of_interest = dict(list(filter(None, executor.map(filter_bamfile, samfile, chunksize = chunks))))
-                    
-        print("Done filtering reads")
-        print(round(time.time() - t1, 2))
-        # compare to bam file by read name (dictionary key) and CIGAR score (dictionary value)
-        infile = pysam.AlignmentFile(input, 'rb', threads=worker_process_count)
-        bam_output = pysam.AlignmentFile(results_file, "wb", template=infile)
-        for read in infile:
-            if read.query_name in reads_of_interest:
-                if read.cigarstring == reads_of_interest.get(read.query_name):
-                    bam_output.write(read)
-        
-        print("Finished writing filtered bam file")
-        print(round(time.time() - t1, 2))
-
-    else:
-        # open the results file
-        results = open(results_file, "w")
-        # make a list of just reads
-        samfile = []
-        # get the headers
-        with open(input) as input_raw:
-            for read in input_raw:
-                if read.startswith("@"):
-                    results.write(read)
-                else:
-                    samfile.append(read) 
-
-        print("File read into memory for parallelization")
-        print(round(time.time() - t1, 2))
-        # chunking the reads improves processing time by avoiding compilation congestion at the end
-        if worker_process_count > 1:
-            chunks = math.floor(0.2 * len(samfile) / worker_process_count)
-        else:
-            chunks = 1
-        # parallelize read evaluations
-        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
-            # list of reads that satisfy the cutoff requirements
-            reads_of_interest = list(filter(None, (executor.map(filter_samfile, samfile, chunksize = chunks))))
-        
-        print("Done filtering reads")
-        print(round(time.time() - t1, 2))
-        for read in reads_of_interest:
-            # write the good reads to a file
-            results.write(read)
-        results.close()
-
-        print("Finished writing filtered sam file")
-        print(round(time.time() - t1, 2))
-
-if __name__ == '__main__':
     # version
-    version = "version 0.0.2"
+    version = "version 0.2.0"
 
     t1 = time.time()
 
@@ -231,6 +140,101 @@ if __name__ == '__main__':
             worker_process_count = int(arg)
         elif opt in ("-v", "--version"):
             print(version)
+
+    # test if the minimum input parameters are defined
+    try:
+        input
+        results_file
+    except NameError:
+        return (print(error_code))
+
+    if file_format == 'paf': 
+        df=pd.read_csv(input, sep="\t", header=None)
         
-    main()
+        print("File read into memory for parallelization")
+        print(round(time.time() - t1, 2))
+        # filter reads by query cutoff 
+        filtered_reads = df[ (df[3]-df[2] ) / df[1] > min_match_to_length]
+        
+        print("Done filtering reads")
+        print(round(time.time() - t1, 2))
+        # output file
+        filtered_reads.to_csv(results_file, sep = "\t", index=False, header=False)
+
+        print("Finished writing filtered paf file")
+        print(round(time.time() - t1, 2))
+
+    elif file_format == 'bam':
+        # make a list of just reads
+        samfile = []
+        infile = pysam.AlignmentFile(input, 'rb', threads=worker_process_count)
+        for read in infile:
+            # add in order: read name, alignment type (index 1), CIGAR string, and alignment score (final index after 'AS:i:') in that order
+            # samfile.append(str(read))
+            read = str(read).split("\t")
+            samfile.append(list((read[0], read[1], read[5], ((read[-1].split("), ("))[2]).split(", ")[1])))
+    
+        print("File read into memory for parallelization")
+        print(round(time.time() - t1, 2))
+        # chunking the reads improves processing time by avoiding compilation congestion at the end
+        if worker_process_count > 1:
+            chunks = math.floor(0.2 * len(samfile) / worker_process_count)
+        else:
+            chunks = 1
+        # parallelize read evaluations
+        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
+            # list of reads that satisfy the cutoff requirements
+            # reads_of_interest = list(filter(None, executor.map(filter_bamfile, samfile, chunksize = chunks)))
+            reads_of_interest = dict(list(filter(None, executor.map(filter_bamfile, samfile, chunksize = chunks))))
+            
+        print("Done filtering reads")
+        print(round(time.time() - t1, 2))
+        print(len(reads_of_interest))
+        # compare to bam file by read name (dictionary key) and CIGAR score (dictionary value)
+        infile = pysam.AlignmentFile(input, 'rb', threads=worker_process_count)
+        bam_output = pysam.AlignmentFile(results_file, "wb", template=infile)
+        # for read in reads_of_interest:
+        #     bam_output.write(read)
+        for read in infile:
+            if read.query_name in reads_of_interest:
+                if read.cigarstring == reads_of_interest.get(read.query_name):
+                    bam_output.write(read)
+        
+        print("Finished writing filtered bam file")
+        print(round(time.time() - t1, 2))
+
+    else:
+        # open the results file
+        results = open(results_file, "w")
+        # make a list of just reads
+        samfile = []
+        # get the headers
+        with open(input) as input_raw:
+            for read in input_raw:
+                if read.startswith("@"):
+                    results.write(read)
+                else:
+                    samfile.append(read) 
+
+        print("File read into memory for parallelization")
+        print(round(time.time() - t1, 2))
+        # chunking the reads improves processing time by avoiding compilation congestion at the end
+        if worker_process_count > 1:
+            chunks = math.floor(0.2 * len(samfile) / worker_process_count)
+        else:
+            chunks = 1
+        # parallelize read evaluations
+        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
+            # list of reads that satisfy the cutoff requirements
+            reads_of_interest = list(filter(None, (executor.map(filter_samfile, samfile, chunksize = chunks))))
+        
+        print("Done filtering reads")
+        print(round(time.time() - t1, 2))
+        for read in reads_of_interest:
+            # write the good reads to a file
+            results.write(read)
+        results.close()
+
+        print("Finished writing filtered sam file")
+        print(round(time.time() - t1, 2))
 

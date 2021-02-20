@@ -17,7 +17,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name = "gerenuq",
-    version = "0.0.1",
+    version = "0.2.0",
     author = "Alec Bahcheli",
     author_email = "abahchel@uwo.ca",
     description = "Samfile long-read filtering script.",
@@ -25,8 +25,9 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/abahcheli/gerenuq",
     packages = find_packages(),
-    # install_requires = install_requires,
+    install_requires = ["pysam", "pandas"],
     python_requires = '>=3.0',
+    # scripts = ['gerenuq/gerenuq_cl.py'],
     entry_points = {
         'console_scripts': ['gerenuq=gerenuq.gerenuq_cl:main']
     },
