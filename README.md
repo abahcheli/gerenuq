@@ -1,6 +1,6 @@
 # GERENUQ
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4281015.svg)](https://doi.org/10.5281/zenodo.4281015)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5119771.svg)](https://doi.org/10.5281/zenodo.5119771)
 
 A simple commandline tool and python functions for filtering long reads from bam, sam and paf red alignment files according to various user-defined parameters.
 # Installation
@@ -26,7 +26,7 @@ A simple commandline tool and python functions for filtering long reads from bam
 ```sh
 gerenuq
 
-$ Required inputs:
+Required inputs:
 -i / --input <input raw samfile>
 -o / --output <output filtered samfile>
 
@@ -57,7 +57,7 @@ Requires read_list as list of mapped read lines from sam or paf file (in tsv for
 
 # Getting Started
 ## Background and Theory
-gerenuq.py is based off of a series of commands used to filter reads, originating from the filtering process used in the cmags paper. Instead of requiring a number of inputs and outputs, this script is a single line requiring a samfile input and returning a filtered samfile list.
+Gerenuq is based off of a series of commands used to filter reads, originating from the filtering process used in the cmags paper. Instead of requiring a number of inputs and outputs, this script is a single line requiring a samfile input and returning a filtered samfile list.
 
 The script filters reads mapped against a reference from a minimap2 results samfile. Required input parameters is a samfile (-i or --samfile) (see __Getting Started__) and an output file (-o or --output). 
 
@@ -70,7 +70,7 @@ For appropriate inputs, type ```python3 gerenuq.py --help```.
 
 The samfile should be the output from a minimap2 alignment that may be filtered by samtools.
 
-Required input parameters is a samfile (-i or --input) and output file (-o or --output). Output will a samfile filtered according to input or default parameters. For example, a simple input would be:
+Required input parameters is a samfile, bamfile or paf file (-i or --input) and output file (-o or --output). Output will a samfile, bamfile or paf file filtered according to input or default parameters. For example, a simple input would be:
 
 ```
 gerenuq -i raw_samfile.sam -o filtered_samfile.sam
