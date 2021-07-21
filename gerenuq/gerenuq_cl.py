@@ -4,6 +4,7 @@
 import sys, getopt, re, time, math, pysam
 import concurrent.futures
 import pandas as pd
+import numpy as np
 
 # number of processes
 worker_process_count = 1
@@ -18,7 +19,7 @@ min_match_to_length = 0.5
 min_length = 1000
 
 # minimum score for an alignment to be considered
-min_score = 1
+min_score = 0
 
 # def filter_bamfile(read, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5):
 def filter_bamfile(read):
@@ -56,6 +57,9 @@ def filter_bamfile(read):
 def filter_samfile(read):
     # split the read into the expected fields
     read = read.split("\t")
+    # filter out incorrect mapped reads
+    if len(read) < 14:
+        return()
     bitflag = read[1]
     cigar_string = read[5]
     alignment_score = read[13]
@@ -85,16 +89,30 @@ def filter_samfile(read):
 
 def main():
     # version
-    version = "version 0.2.0"
+    version = "version 0.2.3"
 
     t1 = time.time()
+
+    # number of processes
+    worker_process_count = 1
+
+    # minimum ratio of length to score
+    min_len_to_score = 2
+
+    # minimum ratio of the number of matches to the length
+    min_match_to_length = 0.5
+
+    # minimum length for a read to be considered
+    min_length = 1000
+
+    # minimum score for an alignment to be considered
+    min_score = 0
 
     # paf mode = False by default
     file_format = 'sam'
 
     # error code to return without necessary input
-    error_code = '''
-    gerenuq
+    error_code = '''gerenuq
     Filters minimap2-mapped reads by mapping score, length, match-to-length and length-to-score ratios. Paf format files only filter by query cutoff.
 
     Required inputs:
@@ -149,20 +167,20 @@ def main():
         return (print(error_code))
 
     if file_format == 'paf': 
-        df=pd.read_csv(input, sep="\t", header=None)
+        df=pd.read_csv(input, sep="\t", header=None, comment='[')
         
         print("File read into memory for parallelization")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1))} seconds')
         # filter reads by query cutoff 
         filtered_reads = df[ (df[3]-df[2] ) / df[1] > min_match_to_length]
         
         print("Done filtering reads")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1))} seconds')
         # output file
         filtered_reads.to_csv(results_file, sep = "\t", index=False, header=False)
 
         print("Finished writing filtered paf file")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1))} seconds')
 
     elif file_format == 'bam':
         # make a list of just reads
@@ -175,20 +193,20 @@ def main():
             samfile.append(list((read[0], read[1], read[5], ((read[-1].split("), ("))[2]).split(", ")[1])))
     
         print("File read into memory for parallelization")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1))} seconds')
         # chunking the reads improves processing time by avoiding compilation congestion at the end
         if worker_process_count > 1:
             chunks = math.floor(0.2 * len(samfile) / worker_process_count)
+                    # parallelize read evaluations
+            with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
+                # list of reads that satisfy the cutoff requirements
+                # reads_of_interest = list(filter(None, executor.map(filter_bamfile, samfile, chunksize = chunks)))
+                reads_of_interest = dict(list(filter(None, executor.map(filter_bamfile, samfile, chunksize = chunks))))
         else:
-            chunks = 1
-        # parallelize read evaluations
-        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
-            # list of reads that satisfy the cutoff requirements
-            # reads_of_interest = list(filter(None, executor.map(filter_bamfile, samfile, chunksize = chunks)))
-            reads_of_interest = dict(list(filter(None, executor.map(filter_bamfile, samfile, chunksize = chunks))))
+            reads_of_interest = dict(list(filter(None, map(filter_bamfile, samfile))))
             
         print("Done filtering reads")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1))} seconds')
         print(len(reads_of_interest))
         # compare to bam file by read name (dictionary key) and CIGAR score (dictionary value)
         infile = pysam.AlignmentFile(input, 'rb', threads=worker_process_count)
@@ -201,7 +219,7 @@ def main():
                     bam_output.write(read)
         
         print("Finished writing filtered bam file")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1, 2))} seconds')
 
     else:
         # open the results file
@@ -213,28 +231,28 @@ def main():
             for read in input_raw:
                 if read.startswith("@"):
                     results.write(read)
-                else:
+                elif read[0].isalnum():
                     samfile.append(read) 
 
         print("File read into memory for parallelization")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1, 2))} seconds')
         # chunking the reads improves processing time by avoiding compilation congestion at the end
         if worker_process_count > 1:
             chunks = math.floor(0.2 * len(samfile) / worker_process_count)
+            # parallelize read evaluations
+            with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
+                # list of reads that satisfy the cutoff requirements
+                reads_of_interest = list(filter(None, (executor.map(filter_samfile, samfile, chunksize = chunks))))
         else:
-            chunks = 1
-        # parallelize read evaluations
-        with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
-            # list of reads that satisfy the cutoff requirements
-            reads_of_interest = list(filter(None, (executor.map(filter_samfile, samfile, chunksize = chunks))))
-        
+            reads_of_interest = list(filter(None, (map(filter_samfile, samfile))))
+
         print("Done filtering reads")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1, 2))} seconds')
         for read in reads_of_interest:
             # write the good reads to a file
             results.write(read)
         results.close()
 
         print("Finished writing filtered sam file")
-        print(round(time.time() - t1, 2))
+        print(f'{str(round(time.time() - t1, 2))} seconds')
 

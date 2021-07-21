@@ -72,7 +72,7 @@ def gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score
 
     Requires input_file in bam, sam or paf format and output_file (output in the same format as input).
 
-    version 0.2.0
+    version 0.2.1
     '''
     t1 = time.time()
     # default format is sam
