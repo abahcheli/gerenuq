@@ -6,9 +6,6 @@ import concurrent.futures
 import pandas as pd
 import numpy as np
 
-# number of processes
-worker_process_count = 1
-
 # minimum ratio of length to score
 min_len_to_score = 2
 
@@ -19,7 +16,11 @@ min_match_to_length = 0.5
 min_length = 1000
 
 # minimum score for an alignment to be considered
-min_score = 0
+min_score = 1
+
+# penalize alignments at the ends of the alignment
+penalize_ends = False
+sequence_length_dict = {}
 
 # def filter_bamfile(read, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5):
 def filter_bamfile(read):
@@ -29,9 +30,11 @@ def filter_bamfile(read):
     bitflag = read[1]
     cigar_string = read[2]
     alignment_score = read[3]
+
     if int(bitflag) == 16 or int(bitflag) == 0:
         # read mapping score
         score = int(alignment_score)
+
         # is the score high enough
         if score >= min_score:
             # read length 
@@ -40,10 +43,12 @@ def filter_bamfile(read):
             num_of_matches = 0
             # get the cigar string
             cigar = re.findall("([0-9]*[MISH])", cigar_string)
+
             for element in cigar:
                 # if the read doesn't match with the chromosome, the length of alignment increase but not the matches
                 if re.search("[ISH]", element):
-                    length += int(element.strip("[ISH]")) 
+                    length += int(element.strip("[ISH]"))
+                
                 # if the read at a position does match the chromosome sequence, the length and the number of matches increase
                 elif re.search("M", element):
                     length += int(element.strip("M")) 
@@ -61,8 +66,10 @@ def filter_samfile(read):
     if len(read) < 14:
         return()
     bitflag = read[1]
+    contig_mapped = read[2]
     cigar_string = read[5]
     alignment_score = read[13]
+
     if int(bitflag) == 16 or int(bitflag) == 0:
         # read mapping score
         score = int(alignment_score[5:])
@@ -74,45 +81,50 @@ def filter_samfile(read):
             num_of_matches = 0
             # get the cigar string
             cigar = re.findall("([0-9]*[MISH])", cigar_string)
+
             for element in cigar:
                 # if the read doesn't match with the chromosome, the length of alignment increase but not the matches
                 if re.search("[ISH]", element):
                     length += int(element.strip("[ISH]")) 
+
                 # if the read at a position does match the chromosome sequence, the length and the number of matches increase
                 elif re.search("M", element):
                     length += int(element.strip("M")) 
                     num_of_matches += int(element.strip("M"))
+
+            # # are we dealing with penalizing the ends or not
+            # if penalize_ends:
+            #     # evaluate whether the read is close to the end of the genome
+            #     if sequence_length_dict[contig_mapped]
+            #     match_rate = 0
+            
+            # else:
+            #     match_rate = (num_of_matches / length) > min_match_to_length
+            
             # if it meets the filter cutoffs, return the whole read
-            if bool(length > min_length and (num_of_matches / length) > min_match_to_length) and bool((int(length) / int(score)) < min_len_to_score):
+            if bool(length > min_length) and (num_of_matches / length) > min_match_to_length and bool((int(length) / int(score)) < min_len_to_score):
                 
                 return ("\t".join(read))
 
+
+def filter_paf_file(input_df):
+    return input_df[ (input_df[3]-input_df[2] ) / input_df[1] > min_match_to_length]
+
+
 def main():
     # version
-    version = "version 0.2.3"
+    version = "version 0.2.5"
 
     t1 = time.time()
 
     # number of processes
     worker_process_count = 1
 
-    # minimum ratio of length to score
-    min_len_to_score = 2
-
-    # minimum ratio of the number of matches to the length
-    min_match_to_length = 0.5
-
-    # minimum length for a read to be considered
-    min_length = 1000
-
-    # minimum score for an alignment to be considered
-    min_score = 0
-
     # paf mode = False by default
     file_format = 'sam'
 
     # error code to return without necessary input
-    error_code = '''gerenuq
+    error_code = '''    gerenuq
     Filters minimap2-mapped reads by mapping score, length, match-to-length and length-to-score ratios. Paf format files only filter by query cutoff.
 
     Required inputs:
@@ -130,7 +142,7 @@ def main():
 
     # get the options and files required for the input
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:t:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "threads=", "version="])
+        opts, args = getopt.getopt(sys.argv[1:],"hi:o:l:m:s:q:e:t:v:",["input=","output=", "length=", "matchlength=", "score=", "lengthscore=", "penalize_ends", "threads=", "version="])
     except getopt.GetoptError:
         print (error_code)
         sys.exit()
@@ -147,13 +159,20 @@ def main():
         elif opt in ("-o", "--output"):
             results_file = str(arg)
         elif opt in ("-l", "--length"):
+            global min_length
             min_length = int(arg)
         elif opt in ("-m", "--matchlength"):
+            global min_match_to_length
             min_match_to_length = float(arg)
         elif opt in ("-s", "--score"):
+            global min_score
             min_score = int(arg)
         elif opt in ("-q", "--lengthscore"):
+            global min_len_to_score
             min_len_to_score = float(arg)
+        elif opt in ("-e", "--penalize_ends"):
+            global penalize_ends
+            penalize_ends = True
         elif opt in ("-t", "--threads"):
             worker_process_count = int(arg)
         elif opt in ("-v", "--version"):
@@ -167,12 +186,12 @@ def main():
         return (print(error_code))
 
     if file_format == 'paf': 
-        df=pd.read_csv(input, sep="\t", header=None, comment='[')
+        df = pd.read_csv(input, sep="\t", header=None, comment='[')
         
         print("File read into memory for parallelization")
         print(f'{str(round(time.time() - t1))} seconds')
         # filter reads by query cutoff 
-        filtered_reads = df[ (df[3]-df[2] ) / df[1] > min_match_to_length]
+        filtered_reads = filter_paf_file(df)
         
         print("Done filtering reads")
         print(f'{str(round(time.time() - t1))} seconds')
@@ -194,6 +213,7 @@ def main():
     
         print("File read into memory for parallelization")
         print(f'{str(round(time.time() - t1))} seconds')
+
         # chunking the reads improves processing time by avoiding compilation congestion at the end
         if worker_process_count > 1:
             chunks = math.floor(0.2 * len(samfile) / worker_process_count)
@@ -231,6 +251,12 @@ def main():
             for read in input_raw:
                 if read.startswith("@"):
                     results.write(read)
+
+                    # append sequence length to dictionary
+                    if read.startswith("@SQ"):
+                        contig = read.split("\t")
+                        sequence_length_dict[contig[1].split(":")[1]] = int(contig[2].split(":")[1])
+
                 elif read[0].isalnum():
                     samfile.append(read) 
 
@@ -255,4 +281,7 @@ def main():
 
         print("Finished writing filtered sam file")
         print(f'{str(round(time.time() - t1, 2))} seconds')
+
+if __name__ == '__main__':
+    main()
 
