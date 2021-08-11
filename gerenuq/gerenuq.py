@@ -150,7 +150,7 @@ def gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score
 
     Requires input_file in bam, sam or paf format and output_file (output in the same format as input).
 
-    version 0.2.5
+    version 0.2.6
     '''
     t1 = time.time()
 
@@ -263,7 +263,7 @@ def gerenuq_filter_read_list(read_list, format='sam', min_score = 1, min_len_to_
 
     Requires read_list as list of mapped read lines from sam or paf file (in tsv format). Returns a list of reads in sam or paf (tsv) format that passed filtering parameters. Headers will be ignored and not returned.
 
-    version 0.3.0
+    version 0.2.6
     '''
     # run process
     if format == 'paf': 

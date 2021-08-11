@@ -176,7 +176,7 @@ def filter_paf_file(input_df):
 
 def main():
     # version
-    version = "version 0.2.5"
+    version = "version 0.2.6"
 
     t1 = time.time()
 
