@@ -9,30 +9,70 @@ def filter_bamfile(read, min_score, min_len_to_score, min_length, min_match_to_l
     bitflag = read[1]
     cigar_string = read[2]
     alignment_score = read[3]
-    if int(bitflag) == 16 or int(bitflag) == 0:
-        # read mapping score
-        score = int(alignment_score)
-        # is the score high enough
-        if score >= min_score:
-            # read length 
-            length = 0
-            # number of matches
-            num_of_matches = 0
-            # get the cigar string
-            cigar = re.findall("([0-9]*[MISH])", cigar_string)
-            for element in cigar:
-                # if the read doesn't match with the chromosome, the length of alignment increase but not the matches
-                if re.search("[ISH]", element):
-                    length += int(element.strip("[ISH]")) 
-                # if the read at a position does match the chromosome sequence, the length and the number of matches increase
-                elif re.search("M", element):
-                    length += int(element.strip("M")) 
-                    num_of_matches += int(element.strip("M"))
-            # if it meets the filter cutoffs, return the whole read
-            if bool(length > min_length and (num_of_matches / length) > min_match_to_length) and bool((int(length) / int(score)) < min_len_to_score):
-                
-                # return read name and cigar string
-                return (read[0], read[2])
+
+    # # make sure it's a primary alignment
+    # if int(bitflag) == 16 or int(bitflag) == 0:
+    # read mapping score
+    score = int(alignment_score[5:])
+    # is the score high enough
+    if score >= min_score:
+        # read length 
+        length = 0
+        # number of matches
+        num_of_matches = 0
+        # length mapped on genome
+        genome_mapped = 0
+
+        # get the cigar string
+        cigar = re.findall("([0-9]*[MISH])", cigar_string)
+
+        for element in cigar:
+            # if the read doesn't match with the chromosome, the length of alignment increase but not the matches
+            if re.search("[ISH]", element):
+                length += int(element.strip("[ISH]")) 
+
+            # if the read at a position does match the chromosome sequence, the length and the number of matches increase
+            elif re.search("M", element):
+                length += int(element.strip("M")) 
+                num_of_matches += int(element.strip("M"))
+                genome_mapped += int(element.strip("M"))
+            
+            # if there is a match, length or mismatch 
+            elif re.search("D", element):
+                genome_mapped += int(element.strip("D"))
+
+
+        # are we dealing with penalizing the ends or not
+        if pen_ends:
+            # evaluate whether the read is close to the end of the genome
+            contig_mapped = read[2]
+
+            # end position of the genome where the read maps to the genome
+            mapping_end = int(read[3]) + genome_mapped
+
+            # corrected length is length minus the last clipping
+            corrected_length = length
+
+            # double using the parameter of minimum length of read to evaluate whether the read qualifies for end of genome mapping consideration
+            if (sequence_length_dict[contig_mapped] - mapping_end) <= min_length:
+                # corrected length is length minus the last clipping
+                if re.search("[SH]", cigar[-1]):
+                    corrected_length = corrected_length - int(cigar[-1].strip("[SH]"))
+
+            # beginning of genome also has different consideration
+            elif int(read[3]) <= min_length:
+                if re.search("[SH]", cigar[0]):
+                    corrected_length = corrected_length - int(cigar[0].strip("[SH]"))
+
+            # evaluate if the matches and minimum length to score with the corrected length
+            if (length > min_length) and ((num_of_matches / corrected_length) > min_match_to_length) and ((int(corrected_length) / int(score)) < min_len_to_score):
+                return ("\t".join(read))
+        
+        # if it meets the filter cutoffs, return the whole read
+        elif (length > min_length) and ((num_of_matches / length) > min_match_to_length) and ((int(length) / int(score)) < min_len_to_score):
+            
+            return ("\t".join(read))
+
 
 def filter_samfile(read, min_score, min_len_to_score, min_length, min_match_to_length):
     # split the read into the expected fields
@@ -40,31 +80,69 @@ def filter_samfile(read, min_score, min_len_to_score, min_length, min_match_to_l
     bitflag = read[1]
     cigar_string = read[5]
     alignment_score = read[13]
-    if int(bitflag) == 16 or int(bitflag) == 0:
-        # read mapping score
-        score = int(alignment_score[5:])
-        # is the score high enough
-        if score >= min_score:
-            # read length 
-            length = 0
-            # number of matches
-            num_of_matches = 0
-            # get the cigar string
-            cigar = re.findall("([0-9]*[MISH])", cigar_string)
-            for element in cigar:
-                # if the read doesn't match with the chromosome, the length of alignment increase but not the matches
-                if re.search("[ISH]", element):
-                    length += int(element.strip("[ISH]")) 
-                # if the read at a position does match the chromosome sequence, the length and the number of matches increase
-                elif re.search("M", element):
-                    length += int(element.strip("M")) 
-                    num_of_matches += int(element.strip("M"))
-            # if it meets the filter cutoffs, return the whole read
-            if bool(length > min_length and (num_of_matches / length) > min_match_to_length) and bool((int(length) / int(score)) < min_len_to_score):
-                
-                return ("\t".join(read))
+    # if int(bitflag) == 16 or int(bitflag) == 0:
+    # read mapping score
+    score = int(alignment_score[5:])
+    # is the score high enough
+    if score >= min_score:
+        # read length 
+        length = 0
+        # number of matches
+        num_of_matches = 0
+        # length mapped on genome
+        genome_mapped = 0
 
-def gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5):
+        # get the cigar string
+        cigar = re.findall("([0-9]*[MISH])", cigar_string)
+
+        for element in cigar:
+            # if the read doesn't match with the chromosome, the length of alignment increase but not the matches
+            if re.search("[ISH]", element):
+                length += int(element.strip("[ISH]")) 
+
+            # if the read at a position does match the chromosome sequence, the length and the number of matches increase
+            elif re.search("M", element):
+                length += int(element.strip("M")) 
+                num_of_matches += int(element.strip("M"))
+                genome_mapped += int(element.strip("M"))
+            
+            # if there is a match, length or mismatch 
+            elif re.search("D", element):
+                genome_mapped += int(element.strip("D"))
+
+
+        # are we dealing with penalizing the ends or not
+        if pen_ends:
+            # evaluate whether the read is close to the end of the genome
+            contig_mapped = read[2]
+
+            # end position of the genome where the read maps to the genome
+            mapping_end = int(read[3]) + genome_mapped
+
+            # corrected length is length minus the last clipping
+            corrected_length = length
+
+            # double using the parameter of minimum length of read to evaluate whether the read qualifies for end of genome mapping consideration
+            if (sequence_length_dict[contig_mapped] - mapping_end) <= min_length:
+                # corrected length is length minus the last clipping
+                if re.search("[SH]", cigar[-1]):
+                    corrected_length = corrected_length - int(cigar[-1].strip("[SH]"))
+
+            # beginning of genome also has different consideration
+            elif int(read[3]) <= min_length:
+                if re.search("[SH]", cigar[0]):
+                    corrected_length = corrected_length - int(cigar[0].strip("[SH]"))
+
+            # evaluate if the matches and minimum length to score with the corrected length
+            if (length > min_length) and ((num_of_matches / corrected_length) > min_match_to_length) and ((int(corrected_length) / int(score)) < min_len_to_score):
+                return ("\t".join(read))
+        
+        # if it meets the filter cutoffs, return the whole read
+        elif (length > min_length) and ((num_of_matches / length) > min_match_to_length) and ((int(length) / int(score)) < min_len_to_score):
+            
+            return ("\t".join(read))
+
+def gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5, penalize_ends=True):
     '''
     gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score = 2, min_length = 1000, min_match_to_length = 0.5)
 
@@ -75,6 +153,14 @@ def gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score
     version 0.2.5
     '''
     t1 = time.time()
+
+    # globalize penalizing variable
+    global pen_ends
+    pen_ends = penalize_ends
+
+    global sequence_length_dict
+    sequence_length_dict = {}
+
     # default format is sam
     file_format = 'sam'
     if re.search(r'\.[pP][aA][fF]', input):
@@ -102,6 +188,14 @@ def gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score
         # make a list of just reads
         samfile = []
         infile = pysam.AlignmentFile(input_file, 'rb')
+
+        # iterate over header
+        for read in str(infile.header).split('\n'):
+            # append sequence length to dictionary
+            if read.startswith("@SQ"):
+                contig = read.split("\t")
+                sequence_length_dict[contig[1].split(":")[1]] = int(contig[2].split(":")[1])
+
         for read in infile:
             # add in order: read name, alignment type (index 1), CIGAR string, and alignment score (final index after 'AS:i:') in that order
             read = str(read).split("\t")
@@ -136,6 +230,12 @@ def gerenuq_filter_file(input_file, output_file, min_score = 1, min_len_to_score
             for read in input_raw:
                 if read.startswith("@"):
                     results.write(read)
+
+                    # append sequence length to dictionary
+                    if read.startswith("@SQ"):
+                        contig = read.split("\t")
+                        sequence_length_dict[contig[1].split(":")[1]] = int(contig[2].split(":")[1])
+
                 else:
                     samfile.append(read) 
 
