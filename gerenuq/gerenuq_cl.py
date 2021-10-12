@@ -1,10 +1,9 @@
 #! /usr/bin/env python
 # Alec Bahcheli, Daniel Giguire from Gloor Lab, Western University, Canada
 
-import sys, getopt, re, time, math, pysam
+import sys, getopt, os, re, time, math, pysam
 import concurrent.futures
 import pandas as pd
-import numpy as np
 
 # minimum ratio of length to score
 min_len_to_score = 2
@@ -171,12 +170,30 @@ def filter_samfile(read):
 
 
 def filter_paf_file(input_df):
-    return input_df[ (input_df[3]-input_df[2] ) / input_df[1] > min_match_to_length]
+    return input_df[ (input_df[3] - input_df[2] ) / input_df[1] > min_match_to_length]
+
+def filter_paf_by_line(input_file, output_file):
+    # open the input and output files
+    with open(output_file, "w") as output_file:
+        with open(input_file) as infile:
+            # iterate over lines
+            for line in infile:
+                # return the comment lines
+                if line.startswith("["):
+                    output_file.write(line)
+                
+                # process the read alignment lines
+                else:
+                    # split by delimiter
+                    line = line.split("\t")
+                    if (int(line[3]) - int(line[2]) ) / int(line[1]) > min_match_to_length:
+                        # write line to output
+                        output_file.write("\t".join(line))
 
 
 def main():
     # version
-    version = "version 0.2.6"
+    version = "version 0.2.7"
 
     t1 = time.time()
 
@@ -249,18 +266,27 @@ def main():
     except NameError:
         return (print(error_code))
 
+
     if file_format == 'paf': 
-        df = pd.read_csv(input, sep="\t", header=None, comment='[')
+        # check the file size (is it greater than 10gb)
+        large_file = os.path.getsize(input) > 1000000000
+
+        if large_file:
+            print("Large file processing...")
+            filter_paf_by_line(input, results_file)
+
+        else:
+            df = pd.read_csv(input, sep="\t", header=None, comment='[')
         
-        print("File read into memory for parallelization")
-        print(f'{str(round(time.time() - t1))} seconds')
-        # filter reads by query cutoff 
-        filtered_reads = filter_paf_file(df)
+            print("File read into memory for parallelization")
+            print(f'{str(round(time.time() - t1))} seconds')
+            # filter reads by query cutoff 
+            filtered_reads = filter_paf_file(df)
         
-        print("Done filtering reads")
-        print(f'{str(round(time.time() - t1))} seconds')
-        # output file
-        filtered_reads.to_csv(results_file, sep = "\t", index=False, header=False)
+            print("Done filtering reads")
+            print(f'{str(round(time.time() - t1))} seconds')
+            # output file
+            filtered_reads.to_csv(results_file, sep = "\t", index=False, header=False)
 
         print("Finished writing filtered paf file")
         print(f'{str(round(time.time() - t1))} seconds')
@@ -314,10 +340,20 @@ def main():
         print(f'{str(round(time.time() - t1, 2))} seconds')
 
     else:
+        # # check the file size (is it greater than 20gb)
+        # large_file = os.path.getsize(input) > 2000000000
+
+        # if large_file:
+        #     pass
+
+        # else:
+
         # open the results file
         results = open(results_file, "w")
+
         # make a list of just reads
         samfile = []
+
         # get the headers
         with open(input) as input_raw:
             for read in input_raw:
@@ -334,6 +370,7 @@ def main():
 
         print("File read into memory for parallelization")
         print(f'{str(round(time.time() - t1, 2))} seconds')
+
         # chunking the reads improves processing time by avoiding compilation congestion at the end
         if worker_process_count > 1:
             chunks = math.floor(0.2 * len(samfile) / worker_process_count)
@@ -341,11 +378,13 @@ def main():
             with concurrent.futures.ProcessPoolExecutor(max_workers = worker_process_count) as executor:
                 # list of reads that satisfy the cutoff requirements
                 reads_of_interest = list(filter(None, (executor.map(filter_samfile, samfile, chunksize = chunks))))
+
         else:
             reads_of_interest = list(filter(None, (map(filter_samfile, samfile))))
 
         print("Done filtering reads")
         print(f'{str(round(time.time() - t1, 2))} seconds')
+
         for read in reads_of_interest:
             # write the good reads to a file
             results.write(read)

@@ -1,7 +1,6 @@
 # Alec Bahcheli, Daniel Giguire from Gloor Lab, Western University, Canada
 
-import sys, getopt, re, time, math, pysam
-import concurrent.futures
+import re, time, pysam
 import pandas as pd
 
 def filter_bamfile(read, min_score, min_len_to_score, min_length, min_match_to_length):
